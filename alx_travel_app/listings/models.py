@@ -17,7 +17,8 @@ class Property(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField()
     location = models.CharField(max_length=255)
-    pricepernight = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    pricepernight = models.DecimalField(max_digits=10, decimal_places=2, 
+                                        validators=[MinValueValidator(Decimal('0.01'))])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -46,8 +47,7 @@ class Booking(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings')
     start_date = models.DateField()
     end_date = models.DateField()
-    total_price = models.DecimalField(max_digits=10, 
-                                      decimal_places=2, 
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, 
                                       validators=[MinValueValidator(Decimal('0.01'))])
     status = models.CharField(
         max_length=10,
@@ -95,3 +95,25 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review by {self.user.username} for {self.property.name} - {self.rating}/5"
+    
+
+class Payment(models.Model):
+    payment_choices = [
+        ("pending", "Pending"),
+        ("confirmed", "Confirmed"),
+        ("canceled", "canceled"),
+    ]
+    booking=models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='payment')
+    payment_status=models.CharField(
+        max_length=10,
+        choices=payment_choices,
+        default='pending'
+    )
+    amount=models.DecimalField(max_digits=10, decimal_places=2,
+                               validators=[MinValueValidator(Decimal('0.01'))])
+    transaction_id=models.CharField(max_length=100, unique=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.booking.booking_id} - {self.payment_status}"
