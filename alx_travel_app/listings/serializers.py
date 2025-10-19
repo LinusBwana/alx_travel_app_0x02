@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Property, Booking
+from .models import Property, Booking, Payment
 from django.contrib.auth.models import User
 from datetime import date
 
@@ -112,3 +112,10 @@ class BookingSerializer(serializers.ModelSerializer):
         if total_price <= 0:
             raise serializers.ValidationError("Total price must be greater than 0")
         return total_price
+    
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'booking', 'amount', 'payment_status', 'transaction_id', 'created_at', 'updated_at']
+        read_only_fields = ['transaction_id', 'created_at', 'updated_at']

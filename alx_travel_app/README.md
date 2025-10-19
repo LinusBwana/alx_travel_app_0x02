@@ -1,12 +1,13 @@
 # Property Booking API
 
-A Django REST API for managing property rentals, bookings, and reviews in Kenya - similar to Airbnb.
+A Django REST API for managing property rentals, bookings, and reviews in Kenya - similar to Airbnb, with integrated payment processing via Chapa.
 
 ## Features
 
 - **Property Management**: Full CRUD operations for rental properties across Kenya
 - **User Bookings**: Complete booking system with date validation and conflict prevention
 - **Review System**: Rate and review properties after completed stays
+- **Payment Processing**: Integrated Chapa payment gateway for secure transactions
 - **Nested Routes**: Access property-specific bookings via nested endpoints
 - **Data Seeding**: Generate sample Kenyan property data for testing
 
@@ -15,6 +16,7 @@ A Django REST API for managing property rentals, bookings, and reviews in Kenya 
 - **Property**: Rental listings with host, location, price in KES, and details
 - **Booking**: Reservations with dates, pricing, and status tracking
 - **Review**: User reviews with ratings (1-5 stars) and comments
+- **Payment**: Payment records linked to bookings with Chapa integration
 
 ## Quick Start
 
@@ -35,6 +37,25 @@ python manage.py createsuperuser
 
 # Run server
 python manage.py runserver
+```
+
+## Configuration
+
+### Chapa Payment Setup
+
+Add the following to your `settings.py`:
+
+```python
+# Chapa API Configuration
+CHAPA_SECRET_KEY = 'your-chapa-secret-key'
+CHAPA_API_URL = 'https://api.chapa.co/v1'
+PAYMENT_CALLBACK_URL = 'https://yourdomain.com/api/payments/callback/'
+```
+
+Set the environment variable:
+
+```bash
+export CHAPA_SECRET_KEY='your-actual-secret-key'
 ```
 
 ## Sample Data
@@ -116,6 +137,27 @@ python manage.py populate_db --clear
 | PATCH | `/api/properties/{property_id}/bookings/{booking_id}/` | Partially update a booking for a property |
 | DELETE | `/api/properties/{property_id}/bookings/{booking_id}/` | Delete a booking for a property |
 
+### Payments
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/payments/` | List all payments |
+| POST | `/api/payments/` | Create a new payment |
+| GET | `/api/payments/{payment_id}/` | Retrieve a specific payment |
+| PUT | `/api/payments/{payment_id}/` | Update a payment (full) |
+| PATCH | `/api/payments/{payment_id}/` | Update a payment (partial) |
+| DELETE | `/api/payments/{payment_id}/` | Delete a payment |
+| POST | `/api/payments/{payment_id}/initiate/` | Initiate payment via Chapa |
+
+**Payment Response Fields:**
+- `id` (Integer) - Payment record ID
+- `booking` (UUID) - Associated booking ID
+- `amount` (Decimal) - Payment amount in currency
+- `payment_status` (String) - Payment status (pending, confirmed, cancelled)
+- `transaction_id` (String) - Unique Chapa transaction reference
+- `created_at` (DateTime) - Payment creation timestamp
+- `updated_at` (DateTime) - Last update timestamp
+
 ## API Request Examples
 
 ### Create a Property
@@ -149,6 +191,29 @@ Content-Type: application/json
 }
 ```
 
+### Initiate Payment via Chapa
+
+```bash
+POST /api/payments/{booking_id}/initiate/
+Content-Type: application/json
+```
+
+**Response:**
+```json
+{
+  "payment": {
+    "id": 1,
+    "booking": "uuid-of-booking",
+    "amount": "60000.00",
+    "payment_status": "pending",
+    "transaction_id": "uuid-of-booking",
+    "created_at": "2025-10-19T10:30:00Z",
+    "updated_at": "2025-10-19T10:30:00Z"
+  },
+  "payment_url": "https://checkout.chapa.co/..."
+}
+```
+
 ### Update a Property (Partial)
 
 ```bash
@@ -178,6 +243,10 @@ GET /api/properties/{property_id}/bookings/
 ### Property Validations
 - **Price**: Price per night must be greater than 0
 
+### Payment Validations
+- **Amount**: Payment amount must be at least 0.01
+- **Transaction ID**: Must be unique and cannot be duplicated
+
 ## Response Codes
 
 - `200 OK` - Successful GET, PUT, PATCH
@@ -187,20 +256,31 @@ GET /api/properties/{property_id}/bookings/
 - `404 Not Found` - Resource not found
 - `500 Internal Server Error` - Server error
 
+## Payment Flow
+
+1. **Create Booking**: User books a property and creates a booking record
+2. **Initiate Payment**: Call the payment initiation endpoint with the booking ID
+3. **Redirect to Chapa**: User is redirected to Chapa checkout URL
+4. **Payment Processing**: User completes payment on Chapa
+5. **Callback**: Chapa sends confirmation callback to your configured endpoint
+6. **Update Status**: Payment status is updated based on callback response
+
 ## Tech Stack
 
 - Django 4.x
 - Django REST Framework
 - drf-nested-routers (for nested routes)
+- Chapa Payment Gateway
 - PostgreSQL/SQLite
 - UUID primary keys
+- Requests library (for API calls)
 
 ## Project Structure
 
 ```
 property-booking-api/
 ├── api/
-│   ├── models.py          # Property, Booking, Review models
+│   ├── models.py          # Property, Booking, Review, Payment models
 │   ├── serializers.py     # DRF serializers with validation
 │   ├── views.py           # ViewSets for CRUD operations
 │   ├── urls.py            # API routing configuration
